@@ -21,6 +21,11 @@ func _init() -> void:
 	check(AiT.parse_reply("{\"actions\":[bad json").get("data").is_empty(), "broken json tolerated")
 	var pr: String = AiT.new().build_prompt("А что это за картина?", {"hall": "Живопись", "halls": ["Живопись"], "exhibit": {"title": "Звёздная ночь", "author": "Ван Гог"}, "shelf": "S"}, "links")
 	check(pr.find("Звёздная ночь") > 0 and pr.find("actions") > 0 and pr.find("без политики") > 0 or pr.find("без политики") > 0, "prompt has context")
+	# лицензии
+	check(WikiT.license_ok({"lic": "CC BY-SA 3.0"}) and WikiT.license_ok({"lic": "Public domain"}) and WikiT.license_ok({"lic": "CC0"}) and WikiT.license_ok({"lic": "GFDL"}), "free licenses ok")
+	check(not WikiT.license_ok({"lic": "CC BY-NC-SA 4.0"}) and not WikiT.license_ok({"lic": "CC BY-ND 2.0"}) and not WikiT.license_ok({"lic": "Fair use"}) and not WikiT.license_ok({"lic": "CC BY 4.0", "nonfree": "true"}) and not WikiT.license_ok({"lic": "", "restr": ""}) and not WikiT.license_ok({"lic": "CC BY-SA 4.0", "restr": "insignia"}), "non-free rejected")
+	var at: String = preload("res://scripts/main.gd").attribution_bbcode({"img": "x", "img_file": "A.jpg", "img_author": "Ivan", "img_lic": "CC BY-SA 4.0", "img_lic_url": "https://creativecommons.org/licenses/by-sa/4.0", "img_page": "https://commons.wikimedia.org/wiki/File:A.jpg", "text_lic": "wikipedia-ru", "src": "https://ru.wikipedia.org/wiki/A"})
+	check(at.find("Ivan") > 0 and at.find("CC BY-SA 4.0") > 0 and at.find("ShareAlike") > 0 and at.find("уменьшено") > 0 and at.find("by-sa/4.0/deed.ru") > 0 and at.find("File:A.jpg") > 0, "attribution complete")
 	# офлайн-команды
 	var c := AiT.parse_command("Сделай мне зал с импрессионистами")
 	check(c["cmd"] == "hall" and c["topic"] == "импрессионистами", "cmd hall")
@@ -45,6 +50,7 @@ func _init() -> void:
 			for e in s["exhibits"]:
 				if not String(e["img"]).begins_with("https://upload.wikimedia.org/") or e["title"] == "": bad += 1
 				if WikiT.is_political(e["title"] + " " + e["desc"]): bad += 1
+				if not WikiT.license_ok({"lic": e.get("img_lic", ""), "restr": ""}) or String(e.get("img_page", "")) == "": bad += 1; print("LIC: ", e["title"], " ", e.get("img_lic"))
 	if bad: for h in base["halls"]:
 		for s in h["shelves"]:
 			for e in s["exhibits"]:

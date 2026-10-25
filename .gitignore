@@ -7,3 +7,4 @@ game/android/build/libs/
 game/android/build/assets/
 game/android/build/src/main/assets/
 *.keystore
+gh-pages-backup.tgz

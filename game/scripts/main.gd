@@ -332,10 +332,32 @@ func open_card(e: Dictionary) -> void:
 	for kv in [["Автор", "author"], ["Дата", "date"], ["Собрание", "collection"]]:
 		if String(e.get(kv[1], "")) != "": t += "[color=#e9c46a]%s:[/color] %s\n" % [kv[0], e[kv[1]]]
 	t += "\n" + String(e.get("desc", "")) + "\n\n"
-	if e.get("src", "") != "": t += "[url=%s]Источник[/url]   " % e["src"]
-	if e.get("img", "") != "": t += "[url=%s]Изображение[/url]" % e["img"]
-	t += "\n[color=#888][font_size=14]%s[/font_size][/color]" % e.get("lic", "")
+	t += "[font_size=15][color=#bbb]" + attribution_bbcode(e) + "[/color][/font_size]"
 	card_text.text = ""; card_text.append_text(t); card.show()
+
+## Атрибуция по требованиям лицензий (CC BY/BY-SA §3/§4, GFDL, Wikimedia Terms of Use §7)
+const LIC_LINKS := {"cc by-sa 4.0": "https://creativecommons.org/licenses/by-sa/4.0/deed.ru", "cc0": "https://creativecommons.org/publicdomain/zero/1.0/deed.ru"}
+static func attribution_bbcode(e: Dictionary) -> String:
+	var t := ""
+	var lic: String = e.get("img_lic", "")
+	if String(e.get("img", "")) != "":
+		t += "[b]Изображение:[/b] "
+		t += ("«%s»" % e.get("img_file", "")) if String(e.get("img_file", "")) != "" else "файл Wikimedia Commons"
+		if String(e.get("img_author", "")) != "": t += ", автор: " + String(e["img_author"]).replace("[", "(")
+		if lic != "":
+			var lu: String = e.get("img_lic_url", "")
+			t += ", лицензия: " + (("[url=%s]%s[/url]" % [lu, lic]) if lu != "" else lic)
+		if String(e.get("img_page", "")) != "": t += ", [url=%s]страница файла[/url]" % e["img_page"]
+		t += ". Изменения: уменьшено до 500 px."
+		if lic.to_lower().find("sa") >= 0 and lic.to_lower().begins_with("cc"): t += " ShareAlike: производные распространяются на тех же условиях."
+		if lic.to_lower().find("gfdl") >= 0: t += " [url=https://www.gnu.org/licenses/fdl-1.3.html]Текст GNU FDL[/url]."
+		t += "\n"
+	var tl: String = e.get("text_lic", "wikidata")
+	if tl.begins_with("wikipedia"):
+		t += "[b]Текст:[/b] [url=%s]статья Википедии[/url] (авторы — участники Википедии, см. историю правок), [url=https://creativecommons.org/licenses/by-sa/4.0/deed.ru]CC BY-SA 4.0[/url], сокращено." % e.get("src", "")
+	else:
+		t += "[b]Данные:[/b] [url=%s]Wikidata[/url], [url=https://creativecommons.org/publicdomain/zero/1.0/deed.ru]CC0[/url]." % e.get("src", "")
+	return t
 
 func _show_halls() -> void:
 	for c in halls_dlg.get_children(): if c is ScrollContainer: c.queue_free()
@@ -446,11 +468,11 @@ func _show_images(imgs: Array) -> void:
 		var embed := mode == "embed" or (mode == "auto" and n < 4)
 		if embed:
 			var tb := TextureButton.new(); tb.custom_minimum_size = Vector2(150, 110); tb.ignore_texture_size = true; tb.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-			tb.tooltip_text = i.get("caption", ""); tb.pressed.connect(func(): OS.shell_open(page)); chat_imgs.add_child(tb)
+			tb.tooltip_text = "%s\n%s\nНажмите — страница файла с лицензией" % [i.get("caption", ""), i.get("lic", "")]; tb.pressed.connect(func(): OS.shell_open(page)); chat_imgs.add_child(tb)
 			var cbk := func(u, tex): if u == url and is_instance_valid(tb): tb.texture_normal = tex
 			images.loaded.connect(cbk); images.request(url, true); tb.tree_exiting.connect(func(): if images.loaded.is_connected(cbk): images.loaded.disconnect(cbk))
 		else:
-			chat_log.append_text("» [url=%s]%s[/url] [color=#888]%s[/color]\n" % [page, String(i.get("caption", "изображение")).left(60), i.get("lic", "")])
+			chat_log.append_text("» [url=%s]%s[/url] [color=#888]%s[/color]\n" % [page, String(i.get("caption", "изображение")).left(60), String(i.get("lic", "")).replace("[", "(")])
 		n += 1
 
 func apply_actions(acts: Array) -> void:
@@ -479,7 +501,17 @@ func apply_actions(acts: Array) -> void:
 					if not s.is_empty():
 						if String(e.get("image_url", "")) == "": e["image_url"] = s.get("img", "")
 						if String(e.get("description", "")) == "": e["description"] = s.get("desc", "")
-						e["src"] = s.get("src", ""); e["lic"] = "Википедия / Wikimedia Commons"
+						e["src"] = s.get("src", ""); e["text_lic"] = s.get("text_lic", "wikipedia-ru")
+						for k in ["img_author", "img_lic", "img_lic_url", "img_page", "img_file"]: e[k] = s.get(k, "")
+				if String(e.get("image_url", "")) != "" and String(e.get("img_lic", "")) == "":
+					# прямую ссылку от ИИ принимаем только если это файл Commons со свободной лицензией
+					var fn := String(e["image_url"]).get_file().uri_decode()
+					if String(e["image_url"]).find("/thumb/") >= 0: fn = String(e["image_url"]).get_base_dir().get_file().uri_decode()
+					var mm: Dictionary = (await wiki.commons_meta([fn.replace("_", " ")])).get(fn.replace("_", " "), {})
+					if mm.is_empty() or not WikiT.license_ok(mm): e["image_url"] = ""
+					else:
+						e["image_url"] = mm["thumb"] if mm["thumb"] != "" else e["image_url"]
+						for k in ["img_author", "img_lic", "img_lic_url", "img_page", "img_file"]: e[k] = WikiT.attribution(mm)[k]
 				MuseumData.add_exhibit(state, hall, a.get("shelf", "Новые экспонаты"), e); added += 1
 			"remove_exhibit": MuseumData.remove_exhibit(state, a.get("title", ""))
 			"remove_shelf": MuseumData.remove_shelf(state, hall, a.get("name", ""))

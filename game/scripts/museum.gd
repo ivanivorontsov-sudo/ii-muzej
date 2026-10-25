@@ -63,11 +63,13 @@ static func add_exhibit(st: Dictionary, hall: String, shelf: String, ex: Diction
 		var n := 2
 		while find_shelf(find_hall(st, hall if hall != "" else "Мои стеллажи"), "%s (%d)" % [s["name"], n]).get("exhibits", []).size() >= MAX_PER_SHELF: n += 1
 		s = add_shelf(st, hall, "%s (%d)" % [s["name"], n])
-	for e in s["exhibits"]:
-		if _eq(e.get("title", ""), ex.get("title", "")): return e
+	for s2 in find_hall(st, hall if hall != "" else "Мои стеллажи")["shelves"]:
+		for e in s2["exhibits"]:
+			if _eq(e.get("title", ""), ex.get("title", "")): return e
 	var e2 := {"title": ex.get("title", "Экспонат"), "desc": ex.get("desc", ex.get("description", "")), "author": ex.get("author", ""),
 		"date": str(ex.get("date", "")), "collection": ex.get("collection", ""), "img": ex.get("img", ex.get("image_url", "")),
-		"src": ex.get("src", ""), "lic": ex.get("lic", "")}
+		"src": ex.get("src", ""), "text_lic": ex.get("text_lic", "wikidata")}
+	for k in ["img_author", "img_lic", "img_lic_url", "img_page", "img_file"]: e2[k] = ex.get(k, "")
 	s["exhibits"].append(e2)
 	return e2
 
