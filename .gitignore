@@ -1,0 +1,9 @@
+build/
+*.apk
+game/.godot/
+game/android/build/build/
+game/android/build/.gradle/
+game/android/build/libs/
+game/android/build/assets/
+game/android/build/src/main/assets/
+*.keystore
