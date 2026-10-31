@@ -18,6 +18,11 @@ func request(url: String, urgent := false) -> void:
 	if waiting.has(url):
 		if urgent and queue.has(url): queue.erase(url); queue.push_front(url)
 		return
+	var r := "res://pics/%s.bin" % url.md5_text()
+	if FileAccess.file_exists(r):
+		var rt := _tex(FileAccess.get_file_as_bytes(r))
+		if rt:
+			mem[url] = rt; loaded.emit.call_deferred(url, rt); return
 	var p := "user://img/%s" % url.md5_text()
 	if FileAccess.file_exists(p):
 		var t := _tex(FileAccess.get_file_as_bytes(p))
