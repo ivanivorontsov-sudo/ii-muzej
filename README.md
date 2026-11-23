@@ -20,7 +20,7 @@ godot --headless --path . --export-release "Android"          # gradle-сбор�
 
 Android-шаблон: `game/android/build` хранит только плагин и манифест. Перед сборкой распакуйте `android_source.zip` из export templates 4.7.2 поверх него, не затирая `MuzejAIPlugin.java`, `AndroidManifest.xml` и `res/raw/capture.js`.
 
-Сайт временно закрыт.
+## Веб-версия\n\nАвтоматическая Web-сборка настроена в [GitHub Actions](.github/workflows/publish-web.yml). Для первой публикации откройте [настройки GitHub Pages](https://github.com/ivanivorontsov-sudo/ii-muzej/settings/pages), в разделе **Build and deployment** установите **Source → GitHub Actions**, затем повторно запустите workflow **Publish AI Museum (Web)** во вкладке Actions.
 
 ## Права и атрибуция
 - В карточке каждого экспоната показаны автор изображения, имя файла, лицензия со ссылкой, страница файла на Commons и сделанные изменения (уменьшено до 500 px). Для BY-SA есть пометка ShareAlike, для GFDL — ссылка на текст лицензии. Тексты: Wikidata (CC0) или Википедия ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/deed.ru), ссылка на статью).
